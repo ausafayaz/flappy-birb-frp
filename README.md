@@ -2,6 +2,8 @@
 
 A Flappy Bird–style browser game written in **TypeScript** using **functional reactive programming (FRP)** with **RxJS**. The whole game is one stream of immutable states. Every input and timer becomes a pure function `State → State`, and the renderer is the only code that touches the DOM.
 
+**Play it:** https://ausafayaz.github.io/flappy-birb-frp/
+
 ![Gameplay](docs/gameplay.png)
 
 ## Features
