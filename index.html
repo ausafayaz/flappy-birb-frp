@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Flappy Birb · Functional Reactive Programming</title>
+    </head>
+    <body>
+        <header>
+            <h1>Flappy Birb</h1>
+            <p class="tagline">A purely functional game built with RxJS Observables</p>
+        </header>
+
+        <main class="game">
+            <div class="stage">
+                <svg id="canvas" width="600" height="400" role="img" aria-label="Game canvas">
+                    <defs>
+                        <!-- Bird sprite, drawn with basic shapes -->
+                        <symbol id="bird-sprite" viewBox="0 0 42 30">
+                            <ellipse cx="20" cy="16" rx="17" ry="12" fill="#ffd23f" stroke="#7a5a00" stroke-width="1.5" />
+                            <ellipse cx="14" cy="18" rx="8" ry="5" fill="#ffb627" stroke="#7a5a00" stroke-width="1" />
+                            <circle cx="28" cy="11" r="4.5" fill="#fff" stroke="#333" stroke-width="1" />
+                            <circle cx="29.5" cy="11" r="2" fill="#222" />
+                            <path d="M35 15 L42 17 L35 20 Z" fill="#ff7b00" stroke="#7a3c00" stroke-width="1" />
+                        </symbol>
+                    </defs>
+                    <rect class="sky" width="600" height="400" />
+                    <g id="ghosts"></g>
+                    <g id="dynamic"></g>
+                </svg>
+
+                <div id="start-hint" class="hint">Click or press <kbd>Space</kbd> to start</div>
+                <div id="overlay" class="overlay" hidden>
+                    <h2 id="overlay-title">Game over</h2>
+                    <p>Press <kbd>R</kbd> to play again. Your last run will fly alongside you as a ghost.</p>
+                </div>
+            </div>
+
+            <aside class="hud">
+                <div class="stat"><span>Lives</span><strong id="lives">3</strong></div>
+                <div class="stat"><span>Score</span><strong id="score">0</strong></div>
+                <ul class="controls">
+                    <li><kbd>Space</kbd> flap</li>
+                    <li><kbd>R</kbd> restart</li>
+                    <li>Gold orbs: +3 score, +1 life</li>
+                </ul>
+            </aside>
+        </main>
+
+        <script type="module" src="/src/main.ts"></script>
+    </body>
+</html>

@@ -1,0 +1,146 @@
+:root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #ffd23f;
+    --pipe: #22c55e;
+    --pipe-edge: #14532d;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-content: center;
+    gap: 1.5rem;
+    padding: 1rem;
+}
+
+header {
+    text-align: center;
+}
+
+h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 0.02em;
+    color: var(--accent);
+}
+
+.tagline {
+    margin: 0.25rem 0 0;
+    color: var(--muted);
+}
+
+.game {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.stage {
+    position: relative;
+    max-width: 600px;
+    width: 100%;
+}
+
+#canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+    border: 3px solid var(--panel);
+}
+
+.sky {
+    fill: #7dd3fc;
+}
+
+.pipe {
+    fill: var(--pipe);
+    stroke: var(--pipe-edge);
+    stroke-width: 2;
+}
+
+.powerup {
+    fill: gold;
+    stroke: #a16207;
+    stroke-width: 2;
+    pointer-events: none;
+}
+
+.ghost {
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+.hint,
+.overlay {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    text-align: center;
+    color: #0f172a;
+    font-weight: 600;
+    pointer-events: none;
+}
+
+.overlay {
+    background: rgba(15, 23, 42, 0.6);
+    color: var(--text);
+    border-radius: 12px;
+}
+
+.overlay[hidden] {
+    display: none;
+}
+
+.overlay h2 {
+    margin: 0 0 0.5rem;
+    font-size: 2rem;
+    color: var(--accent);
+}
+
+.hud {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    min-width: 160px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1.1rem;
+}
+
+.stat strong {
+    color: var(--accent);
+}
+
+.controls {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+    display: grid;
+    gap: 0.35rem;
+}
+
+kbd {
+    background: #334155;
+    color: var(--text);
+    border-radius: 4px;
+    padding: 0.05rem 0.4rem;
+    font-size: 0.85em;
+}
