@@ -26,16 +26,18 @@ A Flappy Bird–style browser game written in **TypeScript** using **functional 
 ## How it works
 
 ```
- keydown(Space) ──► flap        ┐
- keydown(R)     ──► restart     │
- interval(16ms) ──► tick(dt)    ├─ merge ─► scan(apply) ─► state$ ─► render
- timer(csv row) ──► spawnPipe   │
- interval(8s)   ──► spawnPower  ┘
+ keydown(Space) ──► flap      ┐
+ keydown(R)     ──► restart   ├─ merge ─► scan(apply) ─► state$ ─► render
+ interval(16ms) ──► tick(dt)  ┘
+                     └─ advance physics, then spawn pipes / power-ups
+                        that are due at the current game time
 ```
 
-1. **Events become reducers.** Each source Observable is mapped to a reducer, a pure function that takes the current `State` and returns the next one (`flap`, `tick`, `spawnPipe`, `spawnPower`, `restart`).
+1. **Events become reducers.** Each source Observable is mapped to a reducer, a pure function that takes the current `State` and returns the next one (`flap`, `tick`, `restart`).
 2. **Merge and fold.** All reducer streams are merged and folded with `scan`, which produces a single `Observable<State>`.
 3. **Render.** One subscriber draws each state to the SVG canvas. Rendering never feeds back into the game logic.
+
+Pipes and power-ups are spawned from **game time** (`state.t`) inside `tick`, not from separate wall-clock timers. Restarting resets game time, so every run, including runs with ghosts, replays the whole level from the start.
 
 Because the state is a plain immutable value and the reducers are pure, the game logic can be unit-tested without a browser (see `test/game.test.ts`).
 

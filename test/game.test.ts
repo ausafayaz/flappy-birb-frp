@@ -13,7 +13,9 @@ import {
     initial,
     parseCsv,
     restart,
-    spawnPipe,
+    Power,
+    spawnDuePipes,
+    spawnDuePower,
     tick,
     type Pipe,
 } from "../src/game";
@@ -77,7 +79,7 @@ describe("reducers", () => {
     });
 
     it("scores once when a pipe is passed", () => {
-        const behind = { ...spawnPipe(s0.schedule[0])(s0), pipes: [pipeAt(BIRD_X - PipeSize.W - 1)] };
+        const behind = { ...s0, spawned: 1, pipes: [pipeAt(BIRD_X - PipeSize.W - 1)] };
         const s1 = tick(0.001)(behind);
         const s2 = tick(0.001)(s1);
         expect(s1.score).toBe(1);
@@ -97,3 +99,54 @@ describe("reducers", () => {
         expect(fresh.trail).toHaveLength(0);
     });
 });
+
+/** Run the game for `seconds` of game time, keeping the bird safe in mid-air. */
+const play = (s: ReturnType<typeof initial>, seconds: number, dt = 0.016) => {
+    const frames = Math.round(seconds / dt);
+    let out = s;
+    for (let i = 0; i < frames; i++) {
+        // pin the bird to the centre so collisions never end the run in these tests
+        out = tick(dt, () => 0.5)({ ...out, y: World.HEIGHT / 2, vy: 0, lives: 99 });
+    }
+    return out;
+};
+
+describe("spawning on game time", () => {
+    const csv = "gap_y,gap_height,time\n0.5,0.9,1\n0.5,0.9,3\n0.5,0.9,5\n";
+    const s0 = initial(parseCsv(csv));
+
+    it("spawns each pipe when game time reaches its row", () => {
+        expect(spawnDuePipes({ ...s0, t: 0.5 }).pipes).toHaveLength(0);
+        expect(spawnDuePipes({ ...s0, t: 3 }).spawned).toBe(2);
+    });
+
+    it("never spawns the same row twice", () => {
+        const once = spawnDuePipes({ ...s0, t: 3 });
+        expect(spawnDuePipes(once).pipes).toHaveLength(2);
+    });
+
+    it("spawns power-ups every PERIOD_S seconds of game time", () => {
+        const before = spawnDuePower(() => 0.5)({ ...s0, t: Power.PERIOD_S - 0.1 });
+        const after = spawnDuePower(() => 0.5)({ ...s0, t: Power.PERIOD_S });
+        expect(before.powerups).toHaveLength(0);
+        expect(after.powerups).toHaveLength(1);
+    });
+
+    // Regression: pipes used to come from wall-clock timers that started once,
+    // so after pressing R the second run (with a ghost) got no pipes.
+    it("replays the full level after a restart", () => {
+        const run1 = play(s0, 4);
+        expect(run1.spawned).toBe(2);
+        const run2 = play(restart(run1), 6);
+        expect(run2.ghosts).toHaveLength(1);
+        expect(run2.spawned).toBe(3);
+        expect(run2.t).toBeCloseTo(6);
+    });
+
+    it("keeps spawning pipes in a third run after two restarts", () => {
+        const run3 = play(restart(play(restart(play(s0, 2)), 2)), 6);
+        expect(run3.ghosts).toHaveLength(2);
+        expect(run3.spawned).toBe(3);
+    });
+});
+

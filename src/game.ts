@@ -11,15 +11,12 @@
 import {
     Observable,
     filter,
-    from,
     fromEvent,
     interval,
     map,
     merge,
-    mergeMap,
     scan,
     startWith,
-    timer,
 } from "rxjs";
 
 /* ------------------------------------------------------------------ */
@@ -61,7 +58,7 @@ export const Power = {
     RADIUS: 10, // orb size
     SCORE_BONUS: 3, // +3 score when collected
     LIFE_BONUS: 1, // +1 life when collected
-    PERIOD_MS: 8000, // spawn every 8 seconds
+    PERIOD_S: 8, // spawn every 8 seconds of game time
     SPEED: Physics.PIPE_SPEED,
 } as const;
 
@@ -218,6 +215,38 @@ export function ghostYAtTime(path: ReadonlyArray<Sample>, t: number): number | n
     return last.y;
 }
 
+/**
+ * Spawn every scheduled pipe whose time has come.
+ *
+ * Spawning is driven by game time (s.t), not by wall-clock timers, so a
+ * restart replays the level from the beginning: the schedule index resets
+ * with the rest of the state. The schedule is sorted by time, so we only
+ * ever look at rows from `spawned` onwards.
+ */
+export const spawnDuePipes = (s: State): State => {
+    if (!s.running || s.score >= Game.MAX_SCORE) return s;
+    let spawned = s.spawned;
+    const fresh: Pipe[] = [];
+    while (spawned < s.schedule.length && s.schedule[spawned].time <= s.t) {
+        const row = s.schedule[spawned];
+        fresh.push({ id: spawned, x: World.WIDTH, gapY: row.gapY, gapH: row.gapH, passed: false });
+        spawned++;
+    }
+    return fresh.length ? { ...s, pipes: [...s.pipes, ...fresh], spawned } : s;
+};
+
+/** Add a power-up every Power.PERIOD_S seconds of game time. */
+export const spawnDuePower =
+    (rand: () => number = Math.random) =>
+    (s: State): State => {
+        const due = (s.nextPowerId + 1) * Power.PERIOD_S;
+        if (!s.running || s.score >= Game.MAX_SCORE || s.t < due) return s;
+        const margin = 40;
+        const y = margin + rand() * (World.HEIGHT - margin * 2);
+        const pu: PowerUp = { id: s.nextPowerId, x: World.WIDTH, y, r: Power.RADIUS };
+        return { ...s, powerups: [...s.powerups, pu], nextPowerId: s.nextPowerId + 1 };
+    };
+
 /* ------------------------------------------------------------------ */
 /* Reducers                                                            */
 /* ------------------------------------------------------------------ */
@@ -225,8 +254,14 @@ export function ghostYAtTime(path: ReadonlyArray<Sample>, t: number): number | n
 /** Space: give the bird an upward kick. */
 export const flap: Reducer = s => (s.running ? { ...s, vy: Physics.FLAP_VY } : s);
 
-/** One frame of physics, collisions, scoring and ghost recording. */
+/** One frame: advance the world, then spawn anything that is now due. */
 export const tick =
+    (dt: number, rand: () => number = Math.random): Reducer =>
+    (s: State): State =>
+        spawnDuePower(rand)(spawnDuePipes(advance(dt)(s)));
+
+/** Physics, collisions, scoring and ghost recording for one frame. */
+const advance =
     (dt: number): Reducer =>
     (s0: State): State => {
         if (!s0.running) return s0;
@@ -303,36 +338,6 @@ export const tick =
         return { ...s0, t, y, vy, lives, pipes, powerups, score, running, trail };
     };
 
-/** Add the pipe described by one CSV row. */
-export const spawnPipe =
-    (row: CsvRow): Reducer =>
-    s =>
-        s.running && s.score < Game.MAX_SCORE
-            ? {
-                  ...s,
-                  pipes: [
-                      ...s.pipes,
-                      {
-                          id: s.spawned,
-                          x: World.WIDTH,
-                          gapY: row.gapY,
-                          gapH: row.gapH,
-                          passed: false,
-                      },
-                  ],
-                  spawned: s.spawned + 1,
-              }
-            : s;
-
-/** Add a power-up orb at a random height. */
-export const spawnPower = (s: State): State => {
-    if (!s.running || s.score >= Game.MAX_SCORE) return s;
-    const margin = 40;
-    const y = margin + Math.random() * (World.HEIGHT - margin * 2);
-    const pu: PowerUp = { id: s.nextPowerId, x: World.WIDTH, y, r: Power.RADIUS };
-    return { ...s, powerups: [...s.powerups, pu], nextPowerId: s.nextPowerId + 1 };
-};
-
 /** R: keep the finished run as a ghost and start over. */
 export const restart: Reducer = s => {
     const ghosts = s.trail.length > 0 ? [...s.ghosts, s.trail] : s.ghosts;
@@ -346,11 +351,10 @@ export const restart: Reducer = s => {
 /**
  * Wire inputs and timers to reducers, merge them, and fold into State.
  *
- *   tick       every frame        physics, collisions, scoring
- *   spawnPipe  at CSV times       add pipes
- *   spawnPower every 8 s          add a power-up
+ *   tick       every frame        physics, collisions, scoring, and
+ *                                 spawning pipes / power-ups on game time
  *   flap       Space              upward kick
- *   restart    R                  save ghost, reset
+ *   restart    R                  save ghost, reset (level replays from t = 0)
  */
 export const state$ = (csvContents: string): Observable<State> => {
     const schedule = parseCsv(csvContents);
@@ -362,10 +366,6 @@ export const state$ = (csvContents: string): Observable<State> => {
         interval(World.FRAME_MS).pipe(map(() => tick(World.FRAME_MS / 1000))),
         key$("Space").pipe(map(() => flap)),
         key$("KeyR").pipe(map(() => restart)),
-        from(schedule).pipe(
-            mergeMap(row => timer(row.time * 1000).pipe(map(() => spawnPipe(row)))),
-        ),
-        interval(Power.PERIOD_MS).pipe(map(() => spawnPower)),
     );
 
     return reducers$.pipe(
